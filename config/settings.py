@@ -77,7 +77,4 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-LOGIN_URL = '/accounts/login/'
-LOGIN_REDIRECT_URL = '/autocam/'
-
 AUTOCAM_API_TOKEN = os.environ.get('AUTOCAM_API_TOKEN', '')

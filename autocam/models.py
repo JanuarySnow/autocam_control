@@ -10,6 +10,7 @@ class AutoCamServer(models.Model):
     last_seen = models.DateTimeField(null=True, blank=True)
     track_name = models.CharField(max_length=200, blank=True, default='')
     session_label = models.CharField(max_length=50, blank=True, default='', help_text="e.g. Online, Offline, Replay")
+    session_password = models.CharField(max_length=200, blank=True, default='')
     is_auto_registered = models.BooleanField(default=False, help_text="Created automatically by AutoCam on startup")
 
     def __str__(self):

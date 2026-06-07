@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AutoCam – Login</title>
+    <title>AutoCam – {{ server.name }}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -21,12 +21,12 @@
             border-radius: 8px;
             padding: 40px;
             width: 100%;
-            max-width: 380px;
+            max-width: 360px;
         }
-        h1 { color: #00d9ff; font-size: 22px; margin-bottom: 8px; }
-        .subtitle { color: #888; font-size: 13px; margin-bottom: 28px; }
+        h1 { color: #00d9ff; font-size: 22px; margin-bottom: 4px; }
+        .session-name { color: #ccc; font-size: 15px; margin-bottom: 24px; }
         label { display: block; font-size: 12px; color: #aaa; margin-bottom: 6px; }
-        input[type=text], input[type=password] {
+        input[type=password] {
             width: 100%;
             padding: 10px 14px;
             background: #0f3460;
@@ -37,9 +37,7 @@
             margin-bottom: 18px;
             outline: none;
         }
-        input[type=text]:focus, input[type=password]:focus {
-            border-color: #00d9ff;
-        }
+        input[type=password]:focus { border-color: #00d9ff; }
         button[type=submit] {
             width: 100%;
             padding: 11px;
@@ -61,24 +59,25 @@
             font-size: 13px;
             margin-bottom: 18px;
         }
+        .back { margin-top: 18px; text-align: center; }
+        .back a { color: #888; font-size: 13px; text-decoration: none; }
+        .back a:hover { color: #00d9ff; }
     </style>
 </head>
 <body>
     <div class="login-box">
         <h1>AutoCam Control</h1>
-        <p class="subtitle">Sign in to continue</p>
-        {% if form.errors %}
-            <div class="error">Invalid username or password.</div>
+        <p class="session-name">{{ server.name }}</p>
+        {% if error %}
+            <div class="error">Incorrect password.</div>
         {% endif %}
         <form method="post">
             {% csrf_token %}
-            <input type="hidden" name="next" value="{{ next }}">
-            <label for="id_username">Username</label>
-            <input type="text" id="id_username" name="username" autofocus autocomplete="username">
-            <label for="id_password">Password</label>
-            <input type="password" id="id_password" name="password" autocomplete="current-password">
-            <button type="submit">Sign in</button>
+            <label for="password">Session password</label>
+            <input type="password" id="password" name="password" autofocus autocomplete="current-password">
+            <button type="submit">Enter</button>
         </form>
+        <div class="back"><a href="{% url 'autocam:control' %}">← All sessions</a></div>
     </div>
 </body>
 </html>

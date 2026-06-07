@@ -4,6 +4,7 @@ from . import views
 app_name = 'autocam'
 
 urlpatterns = [
+    path('<int:server_id>/login/', views.session_login, name='session_login'),
     path('', views.autocam_control, name='control'),
     path('<int:server_id>/', views.autocam_control, name='control_server'),
 

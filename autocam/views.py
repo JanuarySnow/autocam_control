@@ -2,15 +2,12 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth.decorators import login_required
-from django.core.exceptions import PermissionDenied
 from django.conf import settings
 from django.utils import timezone
 from functools import wraps
 import json
 
 from .models import AutoCamServer, AutoCamCommand, CarState
-from .permissions import is_broadcast_team
 
 STALE_CAR_SECONDS = 30
 COMMAND_RATE_LIMIT_SECONDS = 3
@@ -32,14 +29,34 @@ def require_autocam_token(view_func):
 
 
 def require_autocam_control(view_func):
-    """Login required, then broadcast-team gate."""
+    """Per-session password gate for browser-facing API endpoints."""
     @wraps(view_func)
-    @login_required
     def wrapped(request, *args, **kwargs):
-        if not is_broadcast_team(request.user):
-            return JsonResponse({'error': 'Forbidden'}, status=403)
+        server_id = kwargs.get('server_id')
+        if not request.session.get(f'autocam_auth_{server_id}'):
+            return JsonResponse({'error': 'Unauthorized'}, status=401)
         return view_func(request, *args, **kwargs)
     return wrapped
+
+
+def session_login(request, server_id):
+    server = get_object_or_404(AutoCamServer, id=server_id, is_active=True)
+
+    if request.session.get(f'autocam_auth_{server_id}'):
+        return redirect('autocam:control_server', server_id=server_id)
+
+    if not server.session_password:
+        request.session[f'autocam_auth_{server_id}'] = True
+        return redirect('autocam:control_server', server_id=server_id)
+
+    error = False
+    if request.method == 'POST':
+        if request.POST.get('password', '') == server.session_password:
+            request.session[f'autocam_auth_{server_id}'] = True
+            return redirect('autocam:control_server', server_id=server_id)
+        error = True
+
+    return render(request, 'autocam/session_login.html', {'server': server, 'error': error})
 
 
 def _clean_stale_cars(server):
@@ -60,21 +77,20 @@ def _live_sessions():
 
 
 
-@login_required
 def autocam_control(request, server_id=None):
-    if not is_broadcast_team(request.user):
-        raise PermissionDenied
-
     _expire_dead_sessions()
 
     if server_id is None:
-        # Session picker
         sessions = _live_sessions().order_by('-last_seen')
         if sessions.count() == 1:
             return redirect('autocam:control_server', server_id=sessions.first().id)
         return render(request, 'autocam/sessions.html', {'sessions': sessions})
 
     server = get_object_or_404(AutoCamServer, id=server_id, is_active=True)
+
+    if server.session_password and not request.session.get(f'autocam_auth_{server_id}'):
+        return redirect('autocam:session_login', server_id=server_id)
+
     _clean_stale_cars(server)
 
     cars = CarState.objects.filter(server=server, is_connected=True).order_by('position', 'car_id')
@@ -193,6 +209,7 @@ def register_session(request):
         server_ip   = str(data.get('server_ip')   or '').strip()[:100]
         track_name  = str(data.get('track_name')  or '').strip()[:200]
         session_label = str(data.get('session_label') or '').strip()[:50]
+        session_password = str(data.get('session_password') or '').strip()[:200]
 
         display_name = server_name or track_name or 'AutoCam Session'
         if track_name and server_name and track_name != server_name:
@@ -203,6 +220,7 @@ def register_session(request):
             host=server_ip,
             track_name=track_name,
             session_label=session_label,
+            session_password=session_password,
             is_active=True,
             is_auto_registered=True,
             last_seen=timezone.now(),
