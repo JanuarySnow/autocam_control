@@ -1,0 +1,126 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoCam – Active Sessions</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { color: #00d9ff; margin-bottom: 8px; font-size: 28px; }
+        .subtitle { color: #888; margin-bottom: 32px; font-size: 14px; }
+
+        .session-grid { display: flex; flex-direction: column; gap: 12px; }
+
+        .session-card {
+            background: #16213e;
+            border: 1px solid #0f3460;
+            border-radius: 8px;
+            padding: 20px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            text-decoration: none;
+            color: inherit;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .session-card:hover {
+            border-color: #00d9ff;
+            background: #1a2a4a;
+        }
+        .session-info { flex: 1; }
+        .session-name { font-size: 18px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+        .session-meta { font-size: 13px; color: #888; display: flex; gap: 16px; flex-wrap: wrap; }
+        .session-meta span { display: flex; align-items: center; gap: 4px; }
+        .badge {
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .badge-online  { background: #2ecc71; color: #16213e; }
+        .badge-offline { background: #888;    color: #16213e; }
+        .badge-replay  { background: #9b59b6; color: #fff; }
+
+        .arrow { color: #00d9ff; font-size: 20px; margin-left: 16px; }
+
+        .empty {
+            background: #16213e;
+            border: 1px solid #0f3460;
+            border-radius: 8px;
+            padding: 48px;
+            text-align: center;
+            color: #888;
+        }
+        .empty h2 { color: #00d9ff; margin-bottom: 10px; }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #2ecc71;
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AutoCam Control</h1>
+        <p class="subtitle">Select a live session to control</p>
+
+        {% if sessions %}
+            <div class="session-grid">
+                {% for session in sessions %}
+                    <a class="session-card" href="{% url 'autocam:control_server' server_id=session.id %}">
+                        <div class="session-info">
+                            <div class="session-name">
+                                <span class="live-dot"></span>
+                                {{ session.name }}
+                            </div>
+                            <div class="session-meta">
+                                {% if session.track_name %}
+                                    <span>🏁 {{ session.track_name }}</span>
+                                {% endif %}
+                                {% if session.session_label %}
+                                    <span>
+                                        <span class="badge {% if session.session_label == 'Online' %}badge-online{% elif session.session_label == 'Replay' %}badge-replay{% else %}badge-offline{% endif %}">
+                                            {{ session.session_label }}
+                                        </span>
+                                    </span>
+                                {% endif %}
+                                {% if session.cars.count %}
+                                    <span>👤 {{ session.cars.count }} cars</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <span class="arrow">›</span>
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty">
+                <h2>No Active Sessions</h2>
+                <p>No AutoCam instances are currently running. Start the AutoCam app in Assetto Corsa to begin.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        // Auto-refresh the page every 10 seconds so new sessions appear
+        setTimeout(() => location.reload(), 10000);
+    </script>
+</body>
+</html>

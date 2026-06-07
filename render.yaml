@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: autocam-web-control
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
+    startCommand: gunicorn config.wsgi --log-file -
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: AUTOCAM_API_TOKEN
+        sync: false

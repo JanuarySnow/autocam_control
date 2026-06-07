@@ -1,0 +1,486 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoCam Control{% if server %} - {{ server.name }}{% endif %}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 80px;
+            gap: 20px;
+        }
+
+        .main-content { display: flex; flex-direction: column; gap: 20px; }
+
+        .header {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #0f3460;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 { color: #00d9ff; font-size: 24px; }
+
+        .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+
+        .user-badge {
+            font-size: 12px;
+            color: #aaa;
+            background: #0f3460;
+            padding: 4px 10px;
+            border-radius: 4px;
+        }
+
+        .controls { display: flex; gap: 10px; align-items: center; }
+
+        .server-selector select {
+            padding: 8px 15px;
+            border: 2px solid #0f3460;
+            border-radius: 5px;
+            background: #16213e;
+            color: #eee;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .auto-button {
+            padding: 10px 20px;
+            background: #e94560;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .auto-button:hover { background: #ff6b6b; transform: translateY(-2px); }
+        .auto-button.active { background: #2ecc71; }
+
+        .auto-button .countdown {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #00d9ff;
+            color: #16213e;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .auto-button .countdown.show { display: flex; }
+
+        .drivers-table-container {
+            background: #16213e;
+            border-radius: 8px;
+            border: 1px solid #0f3460;
+            overflow: hidden;
+        }
+
+        .drivers-table { width: 100%; border-collapse: collapse; }
+        .drivers-table thead { background: #0f3460; }
+
+        .drivers-table th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #00d9ff;
+            border-bottom: 2px solid #1a1a2e;
+        }
+
+        .drivers-table tbody tr {
+            border-bottom: 1px solid #0f3460;
+            transition: background 0.2s;
+        }
+
+        .drivers-table tbody tr:hover { background: #1a2332; }
+        .drivers-table tbody tr.focused { background: #2d3561; border-left: 4px solid #e94560; }
+        .drivers-table td { padding: 10px 12px; }
+
+        .focus-btn {
+            padding: 6px 12px;
+            background: #00d9ff;
+            color: #16213e;
+            border: none;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 12px;
+        }
+
+        .focus-btn:hover { background: #00b8d4; transform: scale(1.05); }
+
+        .position { font-weight: bold; color: #00d9ff; font-size: 16px; min-width: 40px; }
+
+        .car-id {
+            background: #0f3460;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #00d9ff;
+        }
+
+        .lap-time { font-family: 'Courier New', monospace; font-size: 13px; color: #aaa; }
+
+        .status-badge { padding: 3px 8px; border-radius: 3px; font-size: 11px; font-weight: 600; }
+        .status-racing { background: #2ecc71; color: #16213e; }
+        .status-pits { background: #f39c12; color: #16213e; }
+
+        .camera-panel {
+            background: #16213e;
+            border-radius: 8px;
+            border: 1px solid #0f3460;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: sticky;
+            top: 20px;
+            height: fit-content;
+        }
+
+        .camera-panel h3 { color: #00d9ff; font-size: 14px; text-align: center; margin-bottom: 5px; }
+
+        .camera-btn {
+            padding: 10px 8px;
+            background: #0f3460;
+            color: #eee;
+            border: 2px solid #1a2332;
+            border-radius: 5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 11px;
+            text-align: center;
+        }
+
+        .camera-btn:hover { background: #1a2332; border-color: #00d9ff; transform: scale(1.05); }
+        .camera-btn.active { background: #00d9ff; color: #16213e; border-color: #00d9ff; }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2ecc71;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 5px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: none;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+
+        .notification.show { display: block; }
+        .notification.error { background: #e94560; }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .empty-state {
+            background: #16213e;
+            padding: 40px;
+            border-radius: 8px;
+            text-align: center;
+            color: #aaa;
+            border: 1px solid #0f3460;
+        }
+
+        .empty-state h2 { color: #00d9ff; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-content">
+            <div class="header">
+                <h1>AutoCam Control</h1>
+                <div class="header-right">
+                    <span class="user-badge">{{ request.user.username }}</span>
+                    <div class="controls">
+                        {% if sessions.count > 1 %}
+                            <div class="server-selector">
+                                <select id="server-select" onchange="changeServer(this.value)">
+                                    {% for s in sessions %}
+                                        <option value="{{ s.id }}" {% if s.id == server.id %}selected{% endif %}>{{ s.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        {% endif %}
+                        {% if server %}
+                            <button class="auto-button active" id="auto-button" onclick="toggleAutoMode()">
+                                AUTO
+                                <span class="countdown" id="countdown-badge"></span>
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            {% if server and cars %}
+                <div class="drivers-table-container">
+                    <table class="drivers-table">
+                        <thead>
+                            <tr>
+                                <th style="width:100px;">Action</th>
+                                <th style="width:60px;">Pos</th>
+                                <th>Driver</th>
+                                <th style="width:80px;">Car ID</th>
+                                <th style="width:80px;">Laps</th>
+                                <th style="width:120px;">Last Lap</th>
+                                <th style="width:100px;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="drivers-tbody">
+                            {% for car in cars %}
+                                <tr data-car-id="{{ car.car_id }}">
+                                    <td>
+                                        <button class="focus-btn" data-car-id="{{ car.car_id }}" data-driver-name="{{ car.driver_name }}">
+                                            Focus
+                                        </button>
+                                    </td>
+                                    <td class="position">{% if car.position %}P{{ car.position }}{% else %}--{% endif %}</td>
+                                    <td><strong>{{ car.driver_name }}</strong></td>
+                                    <td><span class="car-id">{{ car.car_id }}</span></td>
+                                    <td>{{ car.lap_count }}</td>
+                                    <td class="lap-time">
+                                        {% if car.last_lap_time %}{{ car.last_lap_time|floatformat:3 }}ms{% else %}--{% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="status-badge {% if car.is_in_pits %}status-pits{% else %}status-racing{% endif %}">
+                                            {% if car.is_in_pits %}Pits{% else %}Racing{% endif %}
+                                        </span>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% elif server %}
+                <div class="empty-state">
+                    <h2>No Cars Connected</h2>
+                    <p>Waiting for car data from the AutoCam app...</p>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <h2>No Active Servers</h2>
+                    <p>Please configure an AutoCam server in the admin panel.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        {% if server %}
+        <div class="camera-panel">
+            <h3>CAM</h3>
+            <button class="camera-btn" data-camera-id="1" title="Cockpit">Cockpit</button>
+            <button class="camera-btn" data-camera-id="0" title="Chase">Chase</button>
+            <button class="camera-btn" data-camera-id="2" title="Far Chase">Far Chase</button>
+            <button class="camera-btn" data-camera-id="3" title="Track/TV">TV</button>
+            <button class="camera-btn" data-camera-id="4" title="Helicopter">Heli</button>
+            <button class="camera-btn" data-camera-id="5" title="Side View">Side</button>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <script>
+        const serverId = {{ server.id|default:"null" }};
+        let autoMode = true;
+        let overrideEndTime = null;
+        let countdownInterval = null;
+
+        function showNotification(message, isError = false) {
+            const n = document.getElementById('notification');
+            n.textContent = message;
+            n.className = 'notification show' + (isError ? ' error' : '');
+            setTimeout(() => n.classList.remove('show'), 3000);
+        }
+
+        function getCsrfToken() {
+            const cookies = document.cookie.split(';');
+            for (let c of cookies) {
+                const [k, v] = c.trim().split('=');
+                if (k === 'csrftoken') return decodeURIComponent(v);
+            }
+            return '';
+        }
+
+        function startCountdown(seconds) {
+            overrideEndTime = Date.now() + (seconds * 1000);
+            autoMode = false;
+            updateAutoButton();
+            if (countdownInterval) clearInterval(countdownInterval);
+            countdownInterval = setInterval(updateCountdown, 1000);
+            updateCountdown();
+        }
+
+        function updateCountdown() {
+            if (!overrideEndTime) return;
+            const remaining = Math.max(0, Math.ceil((overrideEndTime - Date.now()) / 1000));
+            const badge = document.getElementById('countdown-badge');
+            if (remaining > 0) {
+                badge.textContent = remaining;
+                badge.classList.add('show');
+            } else {
+                badge.classList.remove('show');
+                autoMode = true;
+                updateAutoButton();
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+                overrideEndTime = null;
+            }
+        }
+
+        function updateAutoButton() {
+            const btn = document.getElementById('auto-button');
+            const badge = document.getElementById('countdown-badge');
+            if (!btn) return;
+            if (autoMode) {
+                btn.classList.add('active');
+                btn.textContent = 'AUTO';
+            } else {
+                btn.classList.remove('active');
+                btn.textContent = 'MANUAL';
+            }
+            if (badge) btn.appendChild(badge);
+        }
+
+        function toggleAutoMode() {
+            if (!serverId || autoMode) return;
+            fetch(`/autocam/api/${serverId}/clear_override/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('AutoCam automatic mode resumed');
+                    document.querySelectorAll('tbody tr').forEach(r => r.classList.remove('focused'));
+                    autoMode = true;
+                    overrideEndTime = null;
+                    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+                    document.getElementById('countdown-badge').classList.remove('show');
+                    updateAutoButton();
+                } else if (data.error === 'Too many requests, please wait') {
+                    showNotification('Please wait before sending another command', true);
+                }
+            })
+            .catch(() => showNotification('Failed to send command', true));
+        }
+
+        function changeServer(newServerId) {
+            window.location.href = `/autocam/${newServerId}/`;
+        }
+
+        function refreshCarList() {
+            if (!serverId) return;
+            fetch(`/autocam/api/${serverId}/cars/`)
+                .then(r => {
+                    if (r.status === 401 || r.status === 403) {
+                        window.location.reload();
+                        return null;
+                    }
+                    return r.json();
+                })
+                .then(data => {
+                    if (!data || !data.success) return;
+                    const currentCount = document.querySelectorAll('tbody tr').length;
+                    if (data.cars.length !== currentCount) location.reload();
+                })
+                .catch(() => {});
+        }
+
+        // Event delegation for focus buttons
+        document.addEventListener('click', function(e) {
+            const focusBtn = e.target.closest('.focus-btn');
+            if (focusBtn && serverId) {
+                const carId = parseInt(focusBtn.getAttribute('data-car-id'));
+                const driverName = focusBtn.getAttribute('data-driver-name');
+
+                document.querySelectorAll('tbody tr').forEach(r => r.classList.remove('focused'));
+                focusBtn.closest('tr').classList.add('focused');
+
+                fetch(`/autocam/api/${serverId}/focus/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+                    body: JSON.stringify({ car_id: carId })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification(`Now viewing ${driverName}`);
+                        if (data.override_duration) startCountdown(data.override_duration);
+                    } else if (data.error === 'Too many requests, please wait') {
+                        showNotification('Please wait before sending another command', true);
+                        focusBtn.closest('tr').classList.remove('focused');
+                    } else {
+                        showNotification(`Error: ${data.error}`, true);
+                        focusBtn.closest('tr').classList.remove('focused');
+                    }
+                })
+                .catch(() => showNotification('Failed to send command', true));
+            }
+        });
+
+        // Event delegation for camera buttons
+        document.addEventListener('click', function(e) {
+            const cameraBtn = e.target.closest('.camera-btn');
+            if (cameraBtn && serverId) {
+                const cameraId = parseInt(cameraBtn.getAttribute('data-camera-id'));
+
+                document.querySelectorAll('.camera-btn').forEach(b => b.classList.remove('active'));
+                cameraBtn.classList.add('active');
+
+                fetch(`/autocam/api/${serverId}/camera/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+                    body: JSON.stringify({ camera_id: cameraId })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification(`Camera: ${cameraBtn.getAttribute('title')}`);
+                        if (data.override_duration) startCountdown(data.override_duration);
+                    } else if (data.error === 'Too many requests, please wait') {
+                        showNotification('Please wait before sending another command', true);
+                    } else {
+                        showNotification(`Error: ${data.error}`, true);
+                    }
+                })
+                .catch(() => showNotification('Failed to change camera', true))
+                .finally(() => setTimeout(() => cameraBtn.classList.remove('active'), 2000));
+            }
+        });
+
+        updateAutoButton();
+        if (serverId) setInterval(refreshCarList, 5000);
+    </script>
+</body>
+</html>
